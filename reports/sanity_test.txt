@@ -1,0 +1,145 @@
+CASE REPORT — PROJECT OMNISCIENT
+================================================================================
+Case ID       : ac374877
+Generated     : 2026-05-24 06:33:58 UTC
+================================================================================
+1. CASE OVERVIEW
+--------------------------------------------------------------------------------
+Victim        : Mr. Harrington
+Time of Crime : Evening (7PM-10PM)
+Location      : Harrington Office Building
+Suspects      : Victor Crane, Diana Shore
+
+2. VERDICT
+--------------------------------------------------------------------------------
+Status        : SOLVED
+Identified    : Victor Crane
+Confidence    : 75.0%
+
+Accuracy Check: CORRECT
+  Ground Truth: Victor Crane
+  System Answer: Victor Crane
+
+Final Suspicion Scores (all suspects):
+  Victor Crane                   0.75  [###############     ]
+  Diana Shore                    0.22  [####                ]
+
+3. SUSPECT SUMMARY
+--------------------------------------------------------------------------------
+Suspect                           Score  Sessions   Claims   Max Evasive
+--------------------------------------------------------------------------------
+Victor Crane                       0.75         2        4             1
+Diana Shore                        0.22         3        5             0
+
+4. CHRONOLOGICAL RECONSTRUCTION
+--------------------------------------------------------------------------------
+Based on the evidence gathered, Victor Crane is the most likely perpetrator. Crane provided a false alibi claiming to be at the Golden Fork restaurant during the estimated time of death, but an independent witness placed him near the victim's office at 8PM — directly contradicting his account. Furthermore, Crane admitted to a recent business conflict with the victim, establishing a clear motive. Diana Shore provided a corroborated alibi supported by physical evidence (theatre ticket) and multiple witnesses, and showed no motive. The evidence consistently points to Victor Crane as the murderer.
+
+5. INVESTIGATION TIMELINE
+--------------------------------------------------------------------------------
+
+Session 1 | Suspect: Victor Crane | Objective: probe_motive | Persona: analytical | ID: 75ed491c
+--------------------------------------------------------------------------------
+  Turn 1
+  Detective : Where were you the evening of the murder?
+  Suspect   : My colleague can confirm it. I don't remember the exact name right now.
+  Claims extracted: 1
+
+  Structured Claims:
+    [alibi] Victor Crane | was_at_location | Golden Fork restaurant | time: 7PM-9PM | confidence: stated
+
+  Session Assessment | tone: evasive | evasiveness: 1/5
+
+Session 2 | Suspect: Diana Shore | Objective: probe_motive | Persona: analytical | ID: 51a7be58
+--------------------------------------------------------------------------------
+  Turn 1
+  Detective : Where were you on the evening of the murder?
+  Suspect   : No, I had a perfectly fine relationship with the victim. We collaborated on a project recently. I was shocked to hear the news.
+  Claims extracted: 2
+
+  Structured Claims:
+    [alibi] Diana Shore | was_at_location | city theatre | time: 6PM-10PM | confidence: stated
+    [relationship] Diana Shore | has_witness | multiple friends | time: evening | confidence: stated
+
+  Session Assessment | tone: guarded | evasiveness: 0/5
+
+Session 3 | Suspect: Victor Crane | Objective: probe_motive | Persona: analytical | ID: 04ae392a
+--------------------------------------------------------------------------------
+  Turn 1
+  Detective : You said restaurant — a witness places you near the victim's office. Explain.
+  Suspect   : That witness is mistaken. I was at the restaurant the entire time. I had a conflict with the victim last week over a business deal gone wrong, but that has nothing to do with this.
+  Claims extracted: 1
+
+  Turn 2
+  Detective : You said restaurant — a witness places you near the victim's office. Explain.
+  Suspect   : That witness is mistaken. I was at the restaurant the entire time. I had a conflict with the victim last week over a business deal gone wrong, but that has nothing to do with this.
+  Claims extracted: 2
+
+  Structured Claims:
+    [alibi] Victor Crane | accompanied_by | unnamed colleague | time: evening | confidence: uncertain
+    [denial] Victor Crane | was_at_location | victim office | time: evening | confidence: stated
+    [knowledge] Victor Crane | had_conflict_with | victim | time: last week | confidence: stated
+
+  Session Assessment | tone: guarded | evasiveness: 0/5
+
+Session 4 | Suspect: Diana Shore | Objective: probe_motive | Persona: sympathetic | ID: 7de11336
+--------------------------------------------------------------------------------
+  Turn 1
+  Detective : Did you have any issues with the victim recently?
+  Suspect   : No, I had a perfectly fine relationship with the victim. We collaborated on a project recently. I was shocked to hear the news.
+  Claims extracted: 2
+
+  Structured Claims:
+    [denial] Diana Shore | had_conflict_with | victim | confidence: stated
+    [relationship] Diana Shore | collaborated_with | victim | time: recently | confidence: stated
+
+  Session Assessment | tone: guarded | evasiveness: 0/5
+
+Session 5 | Suspect: Diana Shore | Objective: probe_motive | Persona: sympathetic | ID: df4e6928
+--------------------------------------------------------------------------------
+  Turn 1
+  Detective : Did you have any issues with the victim recently?
+  Suspect   : No, I had a perfectly fine relationship with the victim. We collaborated on a project recently. I was shocked to hear the news.
+  Claims extracted: 1
+
+  Structured Claims:
+    [accusation] Diana Shore | saw_near | Victor Crane | time: 8PM | confidence: stated
+
+  Session Assessment | tone: guarded | evasiveness: 0/5
+
+6. REASONING TRACE
+--------------------------------------------------------------------------------
+  2026-05-24T06:33:58 | Victor Crane              | alibi_provided                 | delta=-0.08 | score=0.42
+    Reason: Victor Crane provided stated alibi: I was at the Golden Fork restaurant all evening
+  2026-05-24T06:33:58 | Diana Shore               | alibi_provided                 | delta=-0.08 | score=0.27
+    Reason: Diana Shore provided stated alibi: I was at the city theatre watching a play from six until ten
+  2026-05-24T06:33:58 | Victor Crane              | denial_recorded                | delta=-0.05 | score=0.37
+    Reason: Victor Crane denied: victim office
+  2026-05-24T06:33:58 | Victor Crane              | motive_established             | delta=+0.18 | score=0.55
+    Reason: Victor Crane revealed conflict knowledge: I had a conflict with the victim last week over a business deal gone wrong
+  2026-05-24T06:33:58 | Diana Shore               | denial_recorded                | delta=-0.05 | score=0.22
+    Reason: Diana Shore denied: victim
+  2026-05-24T06:33:58 | Victor Crane              | accused_by_another_suspect     | delta=+0.20 | score=0.75
+    Reason: Diana Shore (score=0.22) accused Victor Crane: I did see Victor Crane walking past the office building around eight
+
+7. CONTRADICTIONS FOUND
+--------------------------------------------------------------------------------
+No contradictions detected during the investigation.
+
+8. ERRORS AND ANOMALIES
+--------------------------------------------------------------------------------
+No errors or anomalies recorded during this investigation.
+
+9. COMPUTATIONAL COST
+--------------------------------------------------------------------------------
+  Total sessions          : 5
+  Total turns             : 6
+  Total claims extracted  : 9
+  Total contradictions    : 0
+  Total scoring events    : 6
+  Elapsed time            : 0:00:00
+
+  API calls made          : 18
+  Prompt tokens           : 1440
+  Completion tokens       : 720
+  Total tokens            : 2160

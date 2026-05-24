@@ -1,0 +1,6 @@
+# Core runtime dependencies for Project OMNISCIENT
+openai>=1.30.0
+python-dotenv>=1.0.0
+
+# Fine-tuning dependencies (only needed when running train_parser.py)
+# Install separately: pip install -r requirements-finetune.txt

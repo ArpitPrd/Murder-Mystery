@@ -1,0 +1,10 @@
+# Fine-tuning dependencies for train_parser.py
+# Requires a CUDA-capable GPU with at least 8GB VRAM.
+# Install AFTER requirements.txt: pip install -r requirements-finetune.txt
+
+unsloth[colab-new]>=2024.5
+trl>=0.8.6
+transformers>=4.40.0
+datasets>=2.19.0
+bitsandbytes>=0.43.0
+accelerate>=0.29.0
