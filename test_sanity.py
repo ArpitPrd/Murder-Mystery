@@ -18,7 +18,7 @@ Usage:
 import sys
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Silence most logging for cleaner test output
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s | %(message)s")
@@ -85,14 +85,22 @@ DIANA_ANSWERS = [
 ]
 
 DIANA_CLAIMS = [
+    # Diana session 1 — alibi + relationship + cross-reference accusation.
+    # The accusation is merged into the first parse output because with the
+    # rebalanced IG, Diana may not be interviewed a third time. This way the
+    # witness-placement contradiction still gets triggered the first time
+    # Diana is parsed after Victor has provided his alibi.
     '[{"claim_type":"alibi","subject":"Diana Shore","predicate":"was_at_location","object_":"city theatre","time_ref":"6PM-10PM","confidence":"stated","source_text":"I was at the city theatre watching a play from six until ten"},'
-    '{"claim_type":"relationship","subject":"Diana Shore","predicate":"has_witness","object_":"multiple friends","time_ref":"evening","confidence":"stated","source_text":"several friends who saw me there"}]',
+    '{"claim_type":"relationship","subject":"Diana Shore","predicate":"has_witness","object_":"multiple friends","time_ref":"evening","confidence":"stated","source_text":"several friends who saw me there"},'
+    '{"claim_type":"accusation","subject":"Diana Shore","predicate":"saw_near","object_":"Victor Crane","time_ref":"8PM","confidence":"stated","source_text":"I did see Victor Crane walking past the office building around eight"}]',
+    # Diana session 2 — relationship + denial of any conflict
     '[{"claim_type":"denial","subject":"Diana Shore","predicate":"had_conflict_with","object_":"victim","time_ref":null,"confidence":"stated","source_text":"perfectly fine relationship with the victim"},'
     '{"claim_type":"relationship","subject":"Diana Shore","predicate":"collaborated_with","object_":"victim","time_ref":"recently","confidence":"stated","source_text":"We collaborated on a project recently"}]',
 ]
 
-# Witness claim contradicting Victor's alibi — injected by simulating a
-# cross-reference question to Diana that returns Victor's location.
+# Kept for backwards-compat with the original test scaffold; no longer used
+# as a separate parse output now that the cross-ref claim is folded into
+# DIANA_CLAIMS[0].
 DIANA_CROSSREF_CLAIMS = [
     '[{"claim_type":"accusation","subject":"Diana Shore","predicate":"saw_near","object_":"Victor Crane","time_ref":"8PM","confidence":"stated","source_text":"I did see Victor Crane walking past the office building around eight"}]',
 ]
@@ -149,12 +157,22 @@ class MockLLMClient:
 
     The openai SDK calls client.chat.completions.create(...).
     This mock replicates that exact attribute chain.
+
+    Index discipline:
+      Each suspect has THREE independent counters:
+        _<suspect>_question_idx : advanced only on detective question-generation calls
+        _<suspect>_answer_idx   : advanced only on suspect-agent answer calls
+        _<suspect>_parse_idx    : advanced only on parser calls
+      Mixing these caused the original drift bug where the detective's question
+      and the suspect's reply belonged to different scripted turns.
     """
 
     def __init__(self):
-        self._victor_q_idx = 0
+        self._victor_question_idx = 0
+        self._victor_answer_idx = 0
         self._victor_parse_idx = 0
-        self._diana_q_idx = 0
+        self._diana_question_idx = 0
+        self._diana_answer_idx = 0
         self._diana_parse_idx = 0
         self._call_log = []
         self.chat = _MockChat(self._route)
@@ -171,6 +189,20 @@ class MockLLMClient:
         is_narrative_call = "conclusion section" in last_user
         is_follow_up_decision = "deciding whether to ask a follow-up" in last_user
 
+        # A detective question-generation call is short (max_tokens<=120) and
+        # its system prompt is one of the interrogator persona prompts, NOT the
+        # parser prompt and NOT a follow-up decision prompt.
+        is_question_gen = (
+            (max_tokens is not None and max_tokens <= 120)
+            and not is_parser_call
+            and not is_follow_up_decision
+            and not is_narrative_call
+        )
+
+        # A suspect-answer call comes from the MockSuspectAgent: its system
+        # prompt starts with "You are <name>" (set in MockSuspectAgent.__init__).
+        is_suspect_answer = system_content.startswith("You are ")
+
         # Determine which suspect is being processed
         is_victor = "Victor Crane" in full_text
         is_diana = "Diana Shore" in full_text
@@ -179,6 +211,8 @@ class MockLLMClient:
             "is_parser": is_parser_call,
             "is_narrative": is_narrative_call,
             "is_follow_up": is_follow_up_decision,
+            "is_question_gen": is_question_gen,
+            "is_suspect_answer": is_suspect_answer,
             "is_victor": is_victor,
             "is_diana": is_diana,
         })
@@ -204,20 +238,35 @@ class MockLLMClient:
                 self._diana_parse_idx += 1
                 return _MockResponse(DIANA_CLAIMS[idx])
 
-        # --- Question generation (detective) and suspect responses ---
-        if is_victor:
-            idx = min(self._victor_q_idx, len(VICTOR_ANSWERS) - 1)
-            self._victor_q_idx += 1
-            if max_tokens and max_tokens <= 120:
-                return _MockResponse(VICTOR_QUESTIONS[min(idx, len(VICTOR_QUESTIONS)-1)])
-            return _MockResponse(VICTOR_ANSWERS[idx])
+        # --- Detective question generation ---
+        # IMPORTANT: this branch only fires when MockSuspectAgent is NOT the
+        # caller. The detective's system prompt is the interrogator persona,
+        # not a "You are <name>" suspect prompt, so is_suspect_answer is False.
+        if is_question_gen:
+            # Question-gen calls may not contain a suspect name in messages
+            # (the opening question uses the interrogator history alone), so
+            # fall back to whichever suspect's question index is lower.
+            if is_victor:
+                idx = min(self._victor_question_idx, len(VICTOR_QUESTIONS) - 1)
+                self._victor_question_idx += 1
+                return _MockResponse(VICTOR_QUESTIONS[idx])
+            if is_diana:
+                idx = min(self._diana_question_idx, len(DIANA_QUESTIONS) - 1)
+                self._diana_question_idx += 1
+                return _MockResponse(DIANA_QUESTIONS[idx])
+            # Generic fallback for question-gen calls without a name signal
+            return _MockResponse("Tell me what happened that evening.")
 
-        if is_diana:
-            idx = min(self._diana_q_idx, len(DIANA_ANSWERS) - 1)
-            self._diana_q_idx += 1
-            if max_tokens and max_tokens <= 120:
-                return _MockResponse(DIANA_QUESTIONS[min(idx, len(DIANA_QUESTIONS)-1)])
-            return _MockResponse(DIANA_ANSWERS[idx])
+        # --- Suspect agent answer calls ---
+        if is_suspect_answer:
+            if is_victor:
+                idx = min(self._victor_answer_idx, len(VICTOR_ANSWERS) - 1)
+                self._victor_answer_idx += 1
+                return _MockResponse(VICTOR_ANSWERS[idx])
+            if is_diana:
+                idx = min(self._diana_answer_idx, len(DIANA_ANSWERS) - 1)
+                self._diana_answer_idx += 1
+                return _MockResponse(DIANA_ANSWERS[idx])
 
         # Fallback for any unmatched call
         return _MockResponse("I have nothing more to add.")
@@ -396,12 +445,16 @@ def run_test():
     print("-" * 60)
 
     os.makedirs("reports", exist_ok=True)
+    # Use a naive UTC datetime to stay compatible with report_generator.py,
+    # which computes elapsed = datetime.utcnow() - self.start_time. Mixing
+    # tz-aware and tz-naive datetimes raises TypeError.
+    start_time = datetime.now(timezone.utc).replace(tzinfo=None)
     report_gen = ReportGenerator(
         case_state=engine.state,
         verdict=verdict,
         narrative_client=mock_client,
         narrative_model="mock",
-        start_time=datetime.utcnow(),
+        start_time=start_time,
         counter=counter,
         ground_truth="Victor Crane",
     )

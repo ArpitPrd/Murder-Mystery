@@ -180,6 +180,7 @@ class SuspectAgent:
             model=self.model_name,
             messages=context,
             temperature=SUSPECT_TEMPERATURE,
+            max_tokens=200,
         )
 
         answer = response.choices[0].message.content
@@ -385,6 +386,10 @@ def main() -> None:
 
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     local_model = os.environ.get("DETECTIVE_MODEL", "qwen2.5:7b")
+    # Parser does structured JSON extraction; a smaller model is sufficient
+    # and significantly faster. Defaults to qwen2.5:3b — pull once via
+    # `ollama pull qwen2.5:3b`. Override with PARSER_MODEL env var.
+    parser_model_name = os.environ.get("PARSER_MODEL", "qwen2.5:3b")
 
     # Gemini is optional — used only for the narrative section of the report
     # (one call, ~400 tokens). If the key is absent, the local model is used.
@@ -508,7 +513,7 @@ def main() -> None:
         detective_client=local_client,
         detective_model=local_model,
         parser_client=local_client,
-        parser_model=local_model,
+        parser_model=parser_model_name,
         counter=counter,
     )
 

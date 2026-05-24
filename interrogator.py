@@ -104,7 +104,7 @@ class InterrogationGoal:
     persona: Persona = Persona.ANALYTICAL
     time_window: Optional[str] = None      # e.g. "9PM-11PM"
     known_conflicts: list = field(default_factory=list)  # plain-English discrepancies
-    max_turns: int = 3                     # conversation budget per session
+    max_turns: int = 2                     # conversation budget per session
 
 
 @dataclass
@@ -120,8 +120,8 @@ class Testimony:
     persona_used: Persona
     turns: list            # list of {turn, question, raw_answer, claims_extracted}
     claims: list           # list of Claim objects
-    emotional_tone: str = "neutral"       # calm | anxious | cooperative | guarded | evasive
-    evasiveness_score: int = 0            # 0–5 scale derived by session assessor
+    emotional_tone: str = "neutral"       # cooperative | neutral | guarded | evasive
+    evasiveness_score: int = 0            # 0-5 scale derived by session assessor
     follow_up_warranted: bool = False
     follow_up_reason: str = ""
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
@@ -312,6 +312,7 @@ class Interrogator:
         interrogator_history: list,
         goal: InterrogationGoal,
         is_opening: bool,
+        follow_up_reason: Optional[str] = None,
     ) -> str:
         """
         Ask the detective LLM to produce exactly one question.
@@ -320,6 +321,11 @@ class Interrogator:
             interrogator_history : Running message list for the detective role.
             goal                 : Current session goal.
             is_opening           : True for the first question, False for follow-ups.
+            follow_up_reason     : Optional hint about why a follow-up is needed
+                                   (e.g. "no_claims_extracted", "uncertain_claims").
+                                   Passed only on non-opening calls; instructs the
+                                   detective to target the specific gap rather than
+                                   repeating the previous question.
 
         Returns:
             Question text as a plain string.
@@ -330,9 +336,30 @@ class Interrogator:
                 "Generate your opening question. Return only the question text, nothing else."
             )
         else:
+            # Tailor the follow-up instruction by reason so the detective targets
+            # the specific deficiency in the previous answer instead of repeating
+            # the previous question verbatim.
+            reason_hint = ""
+            if follow_up_reason == "no_claims_extracted":
+                reason_hint = (
+                    " The previous answer contained no verifiable facts. "
+                    "Ask a sharper, more specific question that forces a concrete "
+                    "factual response (a name, a place, a time)."
+                )
+            elif follow_up_reason and follow_up_reason.startswith("uncertain_claims"):
+                reason_hint = (
+                    " The previous answer contained uncertain or hedged claims. "
+                    "Ask a clarifying question that pins down the uncertainty — "
+                    "request a specific name, exact time, or independent witness."
+                )
+            elif follow_up_reason:
+                reason_hint = f" Follow-up reason: {follow_up_reason}."
+
             user_msg = (
-                "Based on the conversation so far, generate your next question. "
-                "Return only the question text, nothing else."
+                "Based on the conversation so far, generate your NEXT question. "
+                "It must be different from any question you have already asked."
+                f"{reason_hint}"
+                " Return only the question text, nothing else."
             )
 
         messages = interrogator_history + [{"role": "user", "content": user_msg}]
@@ -341,7 +368,7 @@ class Interrogator:
             model=self.detective_model,
             messages=messages,
             temperature=0.4,
-            max_tokens=120,
+            max_tokens=80,
         )
         self._counter.add(response.usage)
         question = response.choices[0].message.content.strip()
@@ -382,7 +409,7 @@ class Interrogator:
                     {"role": "user",   "content": user_content},
                 ],
                 temperature=0.0,
-                max_tokens=800,
+                max_tokens=400,
             )
             self._counter.add(response.usage)
             raw_json = response.choices[0].message.content.strip()
@@ -447,7 +474,11 @@ class Interrogator:
         """
         # Rule 1: no claims extracted means the answer contained no actionable facts
         if not last_claims:
-            question = self._generate_question(interrogator_history, goal, is_opening=False)
+            question = self._generate_question(
+                interrogator_history, goal,
+                is_opening=False,
+                follow_up_reason="no_claims_extracted",
+            )
             return {
                 "warranted": True,
                 "question": question,
@@ -457,43 +488,24 @@ class Interrogator:
         # Rule 2: uncertain claims need clarification
         uncertain = [c for c in last_claims if c.confidence == "uncertain"]
         if uncertain:
-            question = self._generate_question(interrogator_history, goal, is_opening=False)
+            reason_str = f"uncertain_claims:{[c.claim_id for c in uncertain]}"
+            question = self._generate_question(
+                interrogator_history, goal,
+                is_opening=False,
+                follow_up_reason=reason_str,
+            )
             return {
                 "warranted": True,
                 "question": question,
-                "reason": f"uncertain_claims:{[c.claim_id for c in uncertain]}",
+                "reason": reason_str,
             }
 
-        # Rule 3: LLM-based decision for edge cases not covered by rules above
-        decision_prompt = (
-            "You are deciding whether to ask a follow-up question.\n"
-            f"Objective: {goal.objective.value}\n"
-            f"Last answer: {last_answer}\n"
-            f"Claims extracted: {len(last_claims)}\n\n"
-            "Reply with a JSON object with exactly these keys:\n"
-            '  "warranted": true or false\n'
-            '  "reason": one sentence explaining your decision\n'
-            '  "question": follow-up question if warranted, else ""\n'
-            "Return only valid JSON. No markdown fences."
-        )
-        try:
-            resp = self.detective_client.chat.completions.create(
-                model=self.detective_model,
-                messages=[{"role": "user", "content": decision_prompt}],
-                temperature=0.2,
-                max_tokens=150,
-            )
-            self._counter.add(resp.usage)
-            raw = resp.choices[0].message.content.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            decision = json.loads(raw)
-            return decision
-        except (json.JSONDecodeError, KeyError) as exc:
-            logger.warning("Follow-up decision parse failed: %s", exc)
-            return {"warranted": False, "question": "", "reason": "parse_failed"}
+        # Rule 3: deterministic default — no extra LLM call.
+        # If neither Rule 1 (no claims) nor Rule 2 (uncertain claims) fired,
+        # the previous turn produced concrete, confident claims and another
+        # follow-up would yield diminishing returns. Skipping the LLM-based
+        # decision here saves one call per turn that didn't follow up.
+        return {"warranted": False, "question": "", "reason": "rules_satisfied"}
 
     # ------------------------------------------------------------------
     # Session assessment
@@ -503,16 +515,25 @@ class Interrogator:
         """
         Derive an emotional tone label and evasiveness score from the session turns.
 
-        Evasiveness scoring (0–5):
-          +1 per turn with < 20 words (terse = guarded)
-          +1 per turn with zero claims extracted
-          +1 if session needed the maximum number of turns (suspect resisted)
+        Evasiveness scoring (0-5):
+          +1 per turn with < 20 words           (terse = guarded)
+          +1 per turn with zero claims          (no actionable facts surfaced)
+          +1 per turn where ALL claims are uncertain
+                                                (hedged, deflective answers)
+          +1 if session needed the maximum
+              number of turns                   (suspect resisted to the end)
         Capped at 5.
 
-        Tone is determined by the average words-per-turn:
-          < 15   → evasive
-          15–39  → guarded
-          40+    → cooperative (unless short turns were also present)
+        Tone is determined by multiple signals, not just length. A short
+        cooperative answer with multiple concrete claims is NOT guarded.
+        Decision order (first match wins):
+          1. Any turn with no claims                       -> evasive
+          2. Average words < 15                            -> evasive
+          3. Average words < 20 with no claim density      -> guarded
+          4. All claims across the session are uncertain   -> guarded
+          5. Multiple concrete claims per turn on average  -> cooperative
+          6. Average words >= 25 with no red flags         -> cooperative
+          7. Otherwise                                     -> neutral
 
         Args:
             turns : List of turn dicts from conduct_session.
@@ -520,20 +541,39 @@ class Interrogator:
         Returns:
             (emotional_tone: str, evasiveness_score: int)
         """
+        if not turns:
+            return "neutral", 0
+
         total_words = 0
+        total_claims = 0
         evasiveness = 0
         short_turns = 0
+        zero_claim_turns = 0
+        all_uncertain_turns = 0
 
         for turn in turns:
-            answer = turn.get("raw_answer", "")
+            answer = turn.get("raw_answer", "") or ""
             word_count = len(answer.split())
             total_words += word_count
+
+            claims_in_turn = turn.get("claims_extracted", 0)
+            total_claims += claims_in_turn
 
             if word_count < 20:
                 short_turns += 1
                 evasiveness += 1
 
-            if turn.get("claims_extracted", 0) == 0:
+            if claims_in_turn == 0:
+                zero_claim_turns += 1
+                evasiveness += 1
+
+            # Track turns where every claim extracted was tagged uncertain.
+            # The turn dict only stores the COUNT of claims, not their confidence,
+            # so this signal is approximated using "uncertain_claims" field if
+            # the Interrogator chose to record it. Falls back to 0 if absent.
+            uncertain_in_turn = turn.get("uncertain_claims", 0)
+            if claims_in_turn > 0 and uncertain_in_turn == claims_in_turn:
+                all_uncertain_turns += 1
                 evasiveness += 1
 
         if len(turns) >= 3:
@@ -542,11 +582,20 @@ class Interrogator:
         evasiveness = min(evasiveness, 5)
 
         avg_words = total_words / max(len(turns), 1)
-        if avg_words < 15:
+        claim_density = total_claims / max(len(turns), 1)
+
+        # Tone decision order
+        if zero_claim_turns > 0:
             tone = "evasive"
-        elif avg_words < 40:
+        elif avg_words < 15:
+            tone = "evasive"
+        elif avg_words < 20 and claim_density < 1.5:
             tone = "guarded"
-        elif short_turns == 0:
+        elif all_uncertain_turns == len(turns):
+            tone = "guarded"
+        elif claim_density >= 2.0:
+            tone = "cooperative"
+        elif avg_words >= 25 and short_turns == 0 and all_uncertain_turns == 0:
             tone = "cooperative"
         else:
             tone = "neutral"
@@ -631,11 +680,18 @@ class Interrogator:
 
             claims.extend(turn_claims)
 
+            # Count uncertain claims in this turn so _assess_session can use
+            # this as a signal for hedged/deflective answers.
+            uncertain_in_turn = sum(
+                1 for c in turn_claims if c.confidence == "uncertain"
+            )
+
             turn_record = {
                 "turn": turns_taken + 1,
                 "question": current_question,
                 "raw_answer": raw_answer,
                 "claims_extracted": len(turn_claims),
+                "uncertain_claims": uncertain_in_turn,
             }
             turns.append(turn_record)
 

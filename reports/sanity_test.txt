@@ -1,7 +1,7 @@
 CASE REPORT — PROJECT OMNISCIENT
 ================================================================================
-Case ID       : ac374877
-Generated     : 2026-05-24 06:33:58 UTC
+Case ID       : cded081d
+Generated     : 2026-05-24 08:37:52 UTC
 ================================================================================
 1. CASE OVERVIEW
 --------------------------------------------------------------------------------
@@ -14,22 +14,22 @@ Suspects      : Victor Crane, Diana Shore
 --------------------------------------------------------------------------------
 Status        : SOLVED
 Identified    : Victor Crane
-Confidence    : 75.0%
+Confidence    : 100.0%
 
 Accuracy Check: CORRECT
   Ground Truth: Victor Crane
   System Answer: Victor Crane
 
 Final Suspicion Scores (all suspects):
-  Victor Crane                   0.75  [###############     ]
-  Diana Shore                    0.22  [####                ]
+  Victor Crane                   1.00  [####################]
+  Diana Shore                    0.05  [                    ]
 
 3. SUSPECT SUMMARY
 --------------------------------------------------------------------------------
 Suspect                           Score  Sessions   Claims   Max Evasive
 --------------------------------------------------------------------------------
-Victor Crane                       0.75         2        4             1
-Diana Shore                        0.22         3        5             0
+Victor Crane                       1.00         2        4             2
+Diana Shore                        0.05         1        3             0
 
 4. CHRONOLOGICAL RECONSTRUCTION
 --------------------------------------------------------------------------------
@@ -38,36 +38,37 @@ Based on the evidence gathered, Victor Crane is the most likely perpetrator. Cra
 5. INVESTIGATION TIMELINE
 --------------------------------------------------------------------------------
 
-Session 1 | Suspect: Victor Crane | Objective: probe_motive | Persona: analytical | ID: 75ed491c
+Session 1 | Suspect: Victor Crane | Objective: open_ended | Persona: analytical | ID: 9c5ae078
 --------------------------------------------------------------------------------
   Turn 1
   Detective : Where were you the evening of the murder?
-  Suspect   : My colleague can confirm it. I don't remember the exact name right now.
+  Suspect   : I was at the Golden Fork restaurant all evening with a colleague. We had dinner from seven until well past nine. I never went near the office.
   Claims extracted: 1
 
   Structured Claims:
     [alibi] Victor Crane | was_at_location | Golden Fork restaurant | time: 7PM-9PM | confidence: stated
 
-  Session Assessment | tone: evasive | evasiveness: 1/5
+  Session Assessment | tone: cooperative | evasiveness: 0/5
 
-Session 2 | Suspect: Diana Shore | Objective: probe_motive | Persona: analytical | ID: 51a7be58
+Session 2 | Suspect: Diana Shore | Objective: open_ended | Persona: analytical | ID: d2391c42
 --------------------------------------------------------------------------------
   Turn 1
   Detective : Where were you on the evening of the murder?
-  Suspect   : No, I had a perfectly fine relationship with the victim. We collaborated on a project recently. I was shocked to hear the news.
-  Claims extracted: 2
+  Suspect   : I was at the city theatre watching a play from six until ten. I have the ticket stub and several friends who saw me there.
+  Claims extracted: 3
 
   Structured Claims:
     [alibi] Diana Shore | was_at_location | city theatre | time: 6PM-10PM | confidence: stated
     [relationship] Diana Shore | has_witness | multiple friends | time: evening | confidence: stated
+    [accusation] Diana Shore | saw_near | Victor Crane | time: 8PM | confidence: stated
 
-  Session Assessment | tone: guarded | evasiveness: 0/5
+  Session Assessment | tone: cooperative | evasiveness: 0/5
 
-Session 3 | Suspect: Victor Crane | Objective: probe_motive | Persona: analytical | ID: 04ae392a
+Session 3 | Suspect: Victor Crane | Objective: confront_conflict | Persona: hostile | ID: 30ac095c
 --------------------------------------------------------------------------------
   Turn 1
-  Detective : You said restaurant — a witness places you near the victim's office. Explain.
-  Suspect   : That witness is mistaken. I was at the restaurant the entire time. I had a conflict with the victim last week over a business deal gone wrong, but that has nothing to do with this.
+  Detective : Can anyone confirm you were at the restaurant?
+  Suspect   : My colleague can confirm it. I don't remember the exact name right now.
   Claims extracted: 1
 
   Turn 2
@@ -80,51 +81,34 @@ Session 3 | Suspect: Victor Crane | Objective: probe_motive | Persona: analytica
     [denial] Victor Crane | was_at_location | victim office | time: evening | confidence: stated
     [knowledge] Victor Crane | had_conflict_with | victim | time: last week | confidence: stated
 
-  Session Assessment | tone: guarded | evasiveness: 0/5
-
-Session 4 | Suspect: Diana Shore | Objective: probe_motive | Persona: sympathetic | ID: 7de11336
---------------------------------------------------------------------------------
-  Turn 1
-  Detective : Did you have any issues with the victim recently?
-  Suspect   : No, I had a perfectly fine relationship with the victim. We collaborated on a project recently. I was shocked to hear the news.
-  Claims extracted: 2
-
-  Structured Claims:
-    [denial] Diana Shore | had_conflict_with | victim | confidence: stated
-    [relationship] Diana Shore | collaborated_with | victim | time: recently | confidence: stated
-
-  Session Assessment | tone: guarded | evasiveness: 0/5
-
-Session 5 | Suspect: Diana Shore | Objective: probe_motive | Persona: sympathetic | ID: df4e6928
---------------------------------------------------------------------------------
-  Turn 1
-  Detective : Did you have any issues with the victim recently?
-  Suspect   : No, I had a perfectly fine relationship with the victim. We collaborated on a project recently. I was shocked to hear the news.
-  Claims extracted: 1
-
-  Structured Claims:
-    [accusation] Diana Shore | saw_near | Victor Crane | time: 8PM | confidence: stated
-
-  Session Assessment | tone: guarded | evasiveness: 0/5
+  Session Assessment | tone: neutral | evasiveness: 2/5
 
 6. REASONING TRACE
 --------------------------------------------------------------------------------
-  2026-05-24T06:33:58 | Victor Crane              | alibi_provided                 | delta=-0.08 | score=0.42
-    Reason: Victor Crane provided stated alibi: I was at the Golden Fork restaurant all evening
-  2026-05-24T06:33:58 | Diana Shore               | alibi_provided                 | delta=-0.08 | score=0.27
-    Reason: Diana Shore provided stated alibi: I was at the city theatre watching a play from six until ten
-  2026-05-24T06:33:58 | Victor Crane              | denial_recorded                | delta=-0.05 | score=0.37
-    Reason: Victor Crane denied: victim office
-  2026-05-24T06:33:58 | Victor Crane              | motive_established             | delta=+0.18 | score=0.55
-    Reason: Victor Crane revealed conflict knowledge: I had a conflict with the victim last week over a business deal gone wrong
-  2026-05-24T06:33:58 | Diana Shore               | denial_recorded                | delta=-0.05 | score=0.22
-    Reason: Diana Shore denied: victim
-  2026-05-24T06:33:58 | Victor Crane              | accused_by_another_suspect     | delta=+0.20 | score=0.75
-    Reason: Diana Shore (score=0.22) accused Victor Crane: I did see Victor Crane walking past the office building around eight
+  2026-05-24T08:37:52 | Victor Crane              | alibi_provided                 | delta=-0.08 | score=0.42
+    Reason: [Session 1] Victor Crane provided stated alibi: I was at the Golden Fork restaurant all evening
+  2026-05-24T08:37:52 | Diana Shore               | alibi_provided                 | delta=-0.08 | score=0.27
+    Reason: [Session 2] Diana Shore provided stated alibi: I was at the city theatre watching a play from six until ten
+  2026-05-24T08:37:52 | Victor Crane              | accused_by_another_suspect     | delta=+0.10 | score=0.52
+    Reason: [Session 2] Diana Shore (score=0.27) accused Victor Crane: I did see Victor Crane walking past the office building around eight
+  2026-05-24T08:37:52 | Victor Crane              | alibi_contradicted             | delta=+0.30 | score=0.82
+    Reason: [Session 2] Witness placement conflict: Victor Crane claims to have been at 'Golden Fork restaurant' during 7PM-9PM, but Diana Shore places them near 'Victor Crane' at 8PM.
+  2026-05-24T08:37:52 | Victor Crane              | accusation_corroborated        | delta=+0.10 | score=0.92
+    Reason: [Session 2] Diana Shore's accusation corroborated by a detected contradiction in Victor Crane's alibi.
+  2026-05-24T08:37:52 | Diana Shore               | alibi_corroborated             | delta=-0.22 | score=0.05
+    Reason: [Session 2] Diana Shore's alibi corroborated by named witness within the same testimony.
+  2026-05-24T08:37:52 | Victor Crane              | denial_recorded                | delta=-0.05 | score=0.87
+    Reason: [Session 3] Victor Crane denied: victim office
+  2026-05-24T08:37:52 | Victor Crane              | motive_established             | delta=+0.18 | score=1.00
+    Reason: [Session 3] Victor Crane revealed conflict knowledge: I had a conflict with the victim last week over a business deal gone wrong
 
 7. CONTRADICTIONS FOUND
 --------------------------------------------------------------------------------
-No contradictions detected during the investigation.
+
+Contradiction 1 [RESOLVED] | ID: 8016fa16
+  Witness placement conflict: Victor Crane claims to have been at 'Golden Fork restaurant' during 7PM-9PM, but Diana Shore places them near 'Victor Crane' at 8PM.
+  Claim A (Victor Crane): Victor Crane | was_at_location | Golden Fork restaurant
+  Claim B (Diana Shore): Diana Shore | saw_near | Victor Crane
 
 8. ERRORS AND ANOMALIES
 --------------------------------------------------------------------------------
@@ -132,14 +116,14 @@ No errors or anomalies recorded during this investigation.
 
 9. COMPUTATIONAL COST
 --------------------------------------------------------------------------------
-  Total sessions          : 5
-  Total turns             : 6
-  Total claims extracted  : 9
-  Total contradictions    : 0
-  Total scoring events    : 6
+  Total sessions          : 3
+  Total turns             : 4
+  Total claims extracted  : 7
+  Total contradictions    : 1
+  Total scoring events    : 8
   Elapsed time            : 0:00:00
 
-  API calls made          : 18
-  Prompt tokens           : 1440
-  Completion tokens       : 720
-  Total tokens            : 2160
+  API calls made          : 12
+  Prompt tokens           : 960
+  Completion tokens       : 480
+  Total tokens            : 1440

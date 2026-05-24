@@ -44,17 +44,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # Minimum suspicion score for a suspect to be declared the murderer.
-VERDICT_THRESHOLD = 0.70
+VERDICT_THRESHOLD = 0.75
 
 # The leading suspect's score must exceed the second-highest by this margin
 # before a Conviction verdict is issued.
-SEPARATION_MARGIN = 0.15
+SEPARATION_MARGIN = 0.20
 
 # Maximum total interrogation sessions across all suspects.
-MAX_SESSIONS = 10
+MAX_SESSIONS = 20
 
 # Maximum number of times one suspect can be re-interrogated.
-MAX_SESSIONS_PER_SUSPECT = 2
+MAX_SESSIONS_PER_SUSPECT = 4
 
 # Evasiveness score (0–5) at or above which a suspect triggers hostile persona.
 EVASIVENESS_THRESHOLD = 3
@@ -67,7 +67,7 @@ STAGNATION_WINDOW = 3
 STAGNATION_MIN_DELTA = 0.03
 
 # Minimum sessions before stagnation-based termination is considered.
-MIN_SESSIONS_BEFORE_STAGNATION = 4
+MIN_SESSIONS_BEFORE_STAGNATION = 6
 
 # ---------------------------------------------------------------------------
 # Suspicion weight table — deterministic updates applied after each testimony.
